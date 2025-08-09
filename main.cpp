@@ -14,26 +14,32 @@ vector<string> split(const string &line, char delimiter)
     return result;
 }
 
-string getnextstate(string currstate, string input)
+map<pair<string,string>,string>Transitions;
+void readtransition(const string filename)
 {
     ifstream tr("transition.txt");
-    string s = "";
+    string s="";
 
-    while (getline(tr, s))
+    while(getline(tr,s))
     {
-        string c, i, n;
+        string c,i,n;
         stringstream ss(s);
-        getline(ss, c, ',');
-        getline(ss, i, ',');
-        getline(ss, n, ',');
-        Transitions[{c, i}] = n;
+        getline(ss,c,',');
+        getline(ss,i,',');
+        getline(ss,n,',');
+        Transitions[{c,i}]=n;
     }
     tr.close();
+}
 
-    if (Transitions.find({currstate, input}) != Transitions.end())
-    {
-        return Transitions[{currstate, input}];
-    }
+string getnextstate(string currstate,string input)
+{
+
+    if(Transitions.find({currstate,input})!=Transitions.end())
+        {
+            return Transitions[{currstate,input}];
+        }
+        return "error in transition";
 }
 
 void readstates(const string &filename)
@@ -65,7 +71,7 @@ void readstates(const string &filename)
 
 int main()
 {
-    cout << getnextstate("0", "=") << endl;
+    
 
     readstates("automaton.txt");
 
@@ -74,5 +80,9 @@ int main()
         cout << s.first << " :" << s.second << endl;
     }
 
+    readtransition("transition.txt");
+    cout<<getnextstate("1","4")<<endl;
+
     return 0;
 }
+

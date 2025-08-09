@@ -14,7 +14,6 @@ vector<string> split(const string &line, char delimiter)
     return result;
 }
 
-map<pair<string,string>,string>Transitions;
 void readtransition(const string filename)
 {
     ifstream tr("transition.txt");
@@ -85,4 +84,5 @@ int main()
 
     return 0;
 }
+
 

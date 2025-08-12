@@ -4,7 +4,7 @@ using namespace std;
 map<pair<string, string>, string> Transitions;
 map<string, string> State_Type;
 map<string, string> Token;
-
+string start_state;
 vector<string> split(const string &line, char delimiter)
 {
     vector<string> result;
@@ -54,6 +54,7 @@ void readstates(const string &filename)
 
     getline(file, line);
     State_Type[line] = "Start";
+    start_state = line;
 
     getline(file, line);
 
@@ -85,28 +86,82 @@ void readtokens(const string &filename)
     }
 }
 
+
+
+void readinput(const string &filename)
+{
+    ifstream file(filename);
+    if (!file.is_open())
+    {
+        cout << "error opening input.txt " << endl;
+    }
+    string line;
+    string current = start_state;
+    while (getline(file, line))
+    {
+        stringstream ss(line);
+        string input;
+        while (ss >> input)
+        {
+            if (isdigit(input[0])) 
+            {
+                string buffer = "";
+                for (char c : input)
+                {
+                    string s(1, c);
+                    current = getnextstate(current, s);
+                    buffer += c;
+
+                }
+                if (State_Type[current] == "Final")
+                {
+                    cout << "the token:" << Token[current] << ":" << buffer << endl;
+                    current = start_state;
+                }
+                else
+                {
+                    cout << "in else:" << Token[current] << endl;
+                }
+            }
+            else
+            {
+                current = getnextstate(current, input);
+                if (State_Type[current] == "Final")
+                {
+                    cout << "the token:" << Token[current] << ":" << input << endl;
+                    current = start_state;
+                }
+                else
+                {
+                    cout << "in else:" << Token[current] << endl;
+                }
+            }
+        }
+    }
+}
 int main()
 {
 
     readstates("automaton.txt");
     readtransition("transition.txt");
     readtokens("tokens.txt");
-    for (auto s : State_Type)
-    {
-        cout << s.first << " :" << s.second << endl;
-    }
+    readinput("input.txt");
+    // for (auto s : State_Type)
+    // {
+    //     cout << s.first << " :" << s.second << endl;
+    // }
 
-    // cout<<getnextstate("1","4")<<endl;
-    for (auto s : Transitions)
-    {
+    // cout << getnextstate("q0", "2") << endl;
+    // for (auto s : Transitions)
+    // {
 
-        cout << s.first.first << s.first.second << s.second << endl;
-    }
-    cout << "tokens" << endl;
-    for (auto s : Token)
-    {
-        cout << s.first << ":" << s.second << endl;
-    }
+    //     cout << s.first.first <<":"<< s.first.second <<":"<< s.second << endl;
+    // }
+    // cout << "tokens" << endl;
+    // for (auto s : Token)
+    // {
+    //     cout << s.first << ":" << s.second << endl;
+    // }
 
     return 0;
 }

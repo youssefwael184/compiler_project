@@ -73,15 +73,19 @@ int main()
     
 
     readstates("automaton.txt");
+    readtransition("transition.txt");
 
     for (auto s : State_Type)
     {
         cout << s.first << " :" << s.second << endl;
     }
 
-    readtransition("transition.txt");
     cout<<getnextstate("1","4")<<endl;
-
+    for(auto s : Transitions){
+        
+            cout<<s.first.first <<s.first.second<<s.second<<endl;
+        }
+    
     return 0;
 }
 

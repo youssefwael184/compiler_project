@@ -1,0 +1,19 @@
+Expr    → Term Expr'
+Expr'   → + Term Expr' | - Term Expr' | ε
+
+Term    → Power Term'
+Term'   → * Power Term' | / Power Term' | ε
+
+Power   → Unary Power'
+Power'  → ^ Unary Power' | ε
+
+Unary   → - Unary | Primary
+
+Primary → Func | ( Expr ) | num
+
+Func    → sin ( Expr ) 
+        | cos ( Expr ) 
+        | tan ( Expr ) 
+        | log ( Expr ) 
+        | ln ( Expr ) 
+        | sqrt ( Expr )

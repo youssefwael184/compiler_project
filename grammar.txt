@@ -1,0 +1,10 @@
+Expr-> Term Expr`
+Expr`-> +Term Expr` | -Term Expr` |e
+Term-> Power Term`
+Term`-> *Power Term` | /Power Term` |e
+Power-> unary Power`
+Power`-> ^unary Power` |e
+unary-> -unary | Primary
+Primary-> Func | (Expr) | num
+Func-> sin(Expr) | cos(Expr) | tan(Expr) | log(Expr) | ln(Expr)
+ 

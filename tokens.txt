@@ -2,7 +2,7 @@ q1,Number
 q2,Leftp
 q3,Diff
 q4,Rightp
-q5,Equal
+q5,Log
 q6,Plus
 q7,Muti
 q8,Div
@@ -13,4 +13,3 @@ q12,Sin
 q13,Cos
 q14,Tan
 q15,Ln
-q16,Log

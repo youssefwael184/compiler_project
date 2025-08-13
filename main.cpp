@@ -1,10 +1,15 @@
 #include <bits/stdc++.h>
 
 using namespace std;
+
+map<pair<string, string>, string> parseTable;
+map<string, vector<string>> Grammar;
+set<string> nontermianl;
 map<pair<string, string>, string> Transitions;
 map<string, string> State_Type;
 map<string, string> Token;
 string start_state;
+
 vector<string> split(const string &line, char delimiter)
 {
     vector<string> result;
@@ -86,7 +91,187 @@ void readtokens(const string &filename)
     }
 }
 
+void readgrammar(const string &filename)
+{
+    ifstream file(filename);
+    if (!file.is_open())
+    {
+        cout << "error opening file" << endl;
+    }
+    string line;
+    while (getline(file, line))
+    {
+        stringstream ss(line);
+        string LHS, RHS;
 
+        LHS = line.substr(0, line.find("->"));
+        RHS = line.substr(line.find("->") + 2, line.size());
+        Grammar[LHS].push_back(RHS);
+        nontermianl.insert(LHS);
+    }
+}
+
+set<string> readfirst(string non)
+{
+    set<string> firstset;
+    set<string> ss;
+    string k;
+    for (auto s : Grammar[non])
+    {
+        bool isepslon = true;
+
+        stringstream ss(s);
+        while (ss >> k && isepslon)
+        {
+
+            if (nontermianl.count(k) == 1)
+            {
+                set<string> ss = readfirst(k);
+                for (auto l : ss)
+                {
+
+                    firstset.insert(l);
+                }
+                if (firstset.find("e") == firstset.end())
+                {
+                    isepslon = false;
+                }
+            }
+            else
+            {
+                isepslon = false;
+
+                firstset.insert(k);
+            }
+        }
+    }
+
+    return firstset;
+}
+
+set<string> readfollow(string non)
+{
+    set<string> follow;
+
+    // Rule 1: if it's the start symbol
+    if (non == Grammar.begin()->first)
+    {
+        follow.insert("$");
+    }
+
+    for (auto &rule : Grammar)
+    {
+        string lhs = rule.first;
+
+        for (auto &prod : rule.second)
+        {
+            // Split RHS into symbols
+            vector<string> symbols;
+            stringstream ss(prod);
+            string sym;
+            while (ss >> sym)
+                symbols.push_back(sym);
+
+            for (size_t i = 0; i < symbols.size(); i++)
+            {
+                if (symbols[i] == non)
+                {
+                    // Case 1: Something follows
+                    if (i + 1 < symbols.size())
+                    {
+                        string nextSym = symbols[i + 1];
+                        if (nontermianl.count(nextSym))
+                        {
+                            set<string> firstSet = readfirst(nextSym);
+                            bool hasEps = false;
+                            for (auto &f : firstSet)
+                            {
+                                if (f == "e")
+                                    hasEps = true;
+                                else
+                                    follow.insert(f);
+                            }
+                            if (hasEps)
+                            {
+                                set<string> followLHS = readfollow(lhs);
+                                follow.insert(followLHS.begin(), followLHS.end());
+                            }
+                        }
+                        else
+                        {
+                            follow.insert(nextSym);
+                        }
+                    }
+                    // Case 2: At the end
+                    else if (lhs != non)
+                    {
+                        set<string> followLHS = readfollow(lhs);
+                        follow.insert(followLHS.begin(), followLHS.end());
+                    }
+                }
+            }
+        }
+    }
+
+    return follow;
+}
+
+set<string> firstOfProduction(const string &prod)
+{
+    // Temporarily add it to a fake nonterminal
+    string temp = "TMP";
+    auto backup = Grammar[temp];
+    Grammar[temp] = {prod};
+
+    set<string> first = readfirst(temp);
+
+    Grammar[temp] = backup; // restore
+    return first;
+}
+
+string findProd(const string &nonterm, const string &lookahead)
+{
+    for (auto &prod : Grammar[nonterm])
+    {
+        set<string> firstSet = firstOfProduction(prod);
+        
+        // If lookahead is in FIRST(prod), this is the correct production
+        if (firstSet.count(lookahead))
+            return prod;
+
+        // Epsilon handling: if epsilon in FIRST, check FOLLOW
+        if (firstSet.count("e"))
+        {
+            set<string> followSet = readfollow(nonterm);
+            if (followSet.count(lookahead))
+                return prod;
+        }
+    }
+    return "error: no matching production";
+}
+
+void generateTableInMemory()
+{
+    for (auto nonterm : nontermianl)
+    {
+        set<string> storeFirst = readfirst(nonterm);
+        for (auto terminal : storeFirst)
+        {
+            if (terminal == "e")
+            {
+                set<string> storefollow = readfollow(nonterm);
+                for (auto i : storefollow)
+                {
+                    parseTable[{nonterm, i}] = findProd(nonterm, i);
+                }
+            }
+            else
+            {
+                parseTable[{nonterm, terminal}] = findProd(nonterm, terminal);
+            }
+        }
+    }
+}
 
 void readinput(const string &filename)
 {
@@ -103,7 +288,7 @@ void readinput(const string &filename)
         string input;
         while (ss >> input)
         {
-            if (isdigit(input[0])) 
+            if (isdigit(input[0]))
             {
                 string buffer = "";
                 for (char c : input)
@@ -111,7 +296,6 @@ void readinput(const string &filename)
                     string s(1, c);
                     current = getnextstate(current, s);
                     buffer += c;
-
                 }
                 if (State_Type[current] == "Final")
                 {
@@ -139,6 +323,7 @@ void readinput(const string &filename)
         }
     }
 }
+
 int main()
 {
 
@@ -146,6 +331,8 @@ int main()
     readtransition("transition.txt");
     readtokens("tokens.txt");
     readinput("input.txt");
+    readgrammar("grammar.txt");
+    generateTable("Table.txt");
     // for (auto s : State_Type)
     // {
     //     cout << s.first << " :" << s.second << endl;
@@ -162,6 +349,21 @@ int main()
     // {
     //     cout << s.first << ":" << s.second << endl;
     // }
+    // for(auto s: Grammar){
+    //     cout<< s.first<<endl;
+    //     for(auto ss : s.second){
+    //         cout<<":"<<ss<<endl;
+    //     }
+    // }
+    // for (auto i : readfirst("Term"))
+    // {
+    //     cout << i << endl;
+    // }
+    // for (auto i : readfollow("Func"))
+    // {
+    //     cout << i << endl;
+    // }
+    cout << findProd("Expr`", "+");
 
     return 0;
 }

@@ -1,32 +1,22 @@
-<<<<<<< HEAD
-Expr    → Term Expr'
-Expr'   → + Term Expr' | - Term Expr' | ε
-
-Term    → Power Term'
-Term'   → * Power Term' | / Power Term' | ε
-
-Power   → Unary Power'
-Power'  → ^ Unary Power' | ε
-
-Unary   → - Unary | Primary
-
-Primary → Func | ( Expr ) | num
-
-Func    → sin ( Expr ) 
-        | cos ( Expr ) 
-        | tan ( Expr ) 
-        | log ( Expr ) 
-        | ln ( Expr ) 
-        | sqrt ( Expr )
-=======
 Expr-> Term Expr`
-Expr`-> +Term Expr` | -Term Expr` |e
+Expr`-> + Term Expr`
+Expr`-> - Term Expr` 
+Expr`-> e
 Term-> Power Term`
-Term`-> *Power Term` | /Power Term` |e
-Power-> unary Power`
-Power`-> ^unary Power` |e
-unary-> -unary | Primary
-Primary-> Func | (Expr) | num
-Func-> sin(Expr) | cos(Expr) | tan(Expr) | log(Expr) | ln(Expr)
- 
->>>>>>> d1350963708854662333c0e78ae5f6a5205a8000
+Term`-> * Power Term` 
+Term`-> / Power Term`
+Term`-> e
+Power-> Unary Power`
+Power`-> ^ Unary Power` 
+Power`-> e
+Unary-> - Unary
+Unary-> Primary
+Primary-> Func 
+Primary-> ( Expr ) 
+Primary-> num
+Func-> sin ( Expr ) 
+Func-> cos ( Expr ) 
+Func-> tan ( Expr ) 
+Func-> log ( Expr ) 
+Func-> ln ( Expr ) 
+Func-> sqrt ( Expr )

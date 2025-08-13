@@ -1,0 +1,67 @@
+Expr,(, Term Expr`
+Expr,-, Term Expr`
+Expr,cos, Term Expr`
+Expr,ln, Term Expr`
+Expr,log, Term Expr`
+Expr,num, Term Expr`
+Expr,sin, Term Expr`
+Expr,sqrt, Term Expr`
+Expr,tan, Term Expr`
+Expr`,+, + Term Expr`
+Expr`,-, - Term Expr` 
+Expr`,$, e
+Expr`,), e
+Func,cos, cos ( Expr ) 
+Func,ln, ln ( Expr ) 
+Func,log, log ( Expr ) 
+Func,sin, sin ( Expr ) 
+Func,sqrt, sqrt ( Expr )
+Func,tan, tan ( Expr ) 
+Power,(, Unary Power`
+Power,-, Unary Power`
+Power,cos, Unary Power`
+Power,ln, Unary Power`
+Power,log, Unary Power`
+Power,num, Unary Power`
+Power,sin, Unary Power`
+Power,sqrt, Unary Power`
+Power,tan, Unary Power`
+Power`,^, ^ Unary Power` 
+Power`,$, e
+Power`,), e
+Power`,*, e
+Power`,+, e
+Power`,-, e
+Power`,/, e
+Primary,(, ( Expr ) 
+Primary,cos, Func 
+Primary,ln, Func 
+Primary,log, Func 
+Primary,num, num
+Primary,sin, Func 
+Primary,sqrt, Func 
+Primary,tan, Func 
+Term,(, Power Term`
+Term,-, Power Term`
+Term,cos, Power Term`
+Term,ln, Power Term`
+Term,log, Power Term`
+Term,num, Power Term`
+Term,sin, Power Term`
+Term,sqrt, Power Term`
+Term,tan, Power Term`
+Term`,*, * Power Term` 
+Term`,/, / Power Term`
+Term`,$, e
+Term`,), e
+Term`,+, e
+Term`,-, e
+Unary,(, Primary
+Unary,-, - Unary
+Unary,cos, Primary
+Unary,ln, Primary
+Unary,log, Primary
+Unary,num, Primary
+Unary,sin, Primary
+Unary,sqrt, Primary
+Unary,tan, Primary

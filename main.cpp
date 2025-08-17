@@ -8,8 +8,19 @@ set<string> nontermianl;
 map<pair<string, string>, string> Transitions;
 map<string, string> State_Type;
 map<string, string> Token;
+vector<string> tokens;
 string start_state;
+vector<string> input;
 
+void printStack(stack<string> s) // pass by value (copy)
+{
+    while (!s.empty())
+    {
+        cout << s.top() << " ";
+        s.pop();
+    }
+    cout << endl;
+}
 vector<string> split(const string &line, char delimiter)
 {
     vector<string> result;
@@ -234,7 +245,7 @@ string findProd(const string &nonterm, const string &lookahead)
     for (auto &prod : Grammar[nonterm])
     {
         set<string> firstSet = firstOfProduction(prod);
-        
+
         // If lookahead is in FIRST(prod), this is the correct production
         if (firstSet.count(lookahead))
             return prod;
@@ -250,7 +261,7 @@ string findProd(const string &nonterm, const string &lookahead)
     return "error: no matching production";
 }
 
-void generateTableInMemory()
+void generateTable()
 {
     for (auto nonterm : nontermianl)
     {
@@ -279,50 +290,151 @@ void readinput(const string &filename)
     if (!file.is_open())
     {
         cout << "error opening input.txt " << endl;
+        return;
     }
+
     string line;
     string current = start_state;
+
     while (getline(file, line))
     {
         stringstream ss(line);
         string input;
+
         while (ss >> input)
         {
+            bool recognized = true; // Track if this token is valid
+
             if (isdigit(input[0]))
             {
                 string buffer = "";
+                current = start_state; // Always reset before reading a new token
                 for (char c : input)
                 {
                     string s(1, c);
                     current = getnextstate(current, s);
+
+                    if (current.empty()) // No valid transition
+                    {
+                        recognized = false;
+                        break;
+                    }
+
                     buffer += c;
                 }
-                if (State_Type[current] == "Final")
+
+                if (recognized && State_Type[current] == "Final")
                 {
-                    cout << "the token:" << Token[current] << ":" << buffer << endl;
-                    current = start_state;
+                    tokens.push_back(Token[current]);
                 }
                 else
                 {
-                    cout << "in else:" << Token[current] << endl;
+                    cout << "Invalid token: " << buffer << endl;
+                    tokens.push_back("INVALID");
                 }
+                current = start_state;
             }
             else
             {
+                current = start_state;
                 current = getnextstate(current, input);
-                if (State_Type[current] == "Final")
+
+                if (!current.empty() && State_Type[current] == "Final")
                 {
-                    cout << "the token:" << Token[current] << ":" << input << endl;
-                    current = start_state;
+                    tokens.push_back(Token[current]);
                 }
                 else
                 {
-                    cout << "in else:" << Token[current] << endl;
+                    cout << "Invalid token: " << input << endl;
+                    tokens.push_back("INVALID");
                 }
+                current = start_state;
             }
         }
     }
 }
+
+
+void parser()
+{
+    // Build input stream from the global 'tokens' vector:
+    vector<string> input = tokens;   // copy
+    input.push_back("$");            // end marker
+
+    // Initialize parser stack with start symbol
+    stack<string> st;
+    string startSymbol = Grammar.begin()->first; // your code already relies on this
+    st.push("$");
+    st.push(startSymbol);
+
+    // Cursor into input
+    size_t ip = 0;
+
+    auto normalizeTokenName = [](const string& tok) -> string {
+        // If later you store "num:123", strip to "num"
+        size_t p = tok.find(':');
+        if (p != string::npos) return tok.substr(0, p);
+        return tok;
+    };
+
+    while (!st.empty())
+    {
+        string top = st.top();
+        string lookahead = normalizeTokenName(input[ip]);
+
+        // Accept?
+        if (top == "$" && lookahead == "$") {
+            cout << "Parsing successful" << endl;
+            return;
+        }
+
+        // Terminal on stack
+        if (nontermianl.count(top) == 0)
+        {
+            if (top == lookahead) {
+                st.pop();
+                ip++;                 // consume input
+            } else {
+                cout << "Parse error: expected '" << top << "' but found '" << input[ip] << "'" << endl;
+                return;
+            }
+        }
+        // Nonterminal on stack
+        else
+        {
+            // Safe lookup: your parseTable keys must use the SAME terminal strings as grammar
+            auto key = make_pair(top, lookahead);
+            if (!parseTable.count(key)) {
+                // Try a couple of useful fallbacks when lookahead is number-like
+                if (lookahead == "Number") lookahead = "num";
+                key = make_pair(top, lookahead);
+            }
+            if (!parseTable.count(key)) {
+                cout << "Parse error at token '" << input[ip] << "' with nonterminal '" << top << "'" << endl;
+                return;
+            }
+
+            string prod = parseTable[key];
+            st.pop();
+
+            // epsilon?
+            if (prod == "e" || prod == "ε" || prod.empty()) {
+                // do nothing (epsilon)
+            } else {
+                // push RHS in reverse order
+                vector<string> rhs = split(prod, ' ');
+                for (int i = (int)rhs.size() - 1; i >= 0; --i) {
+                    if (rhs[i].empty() || rhs[i] == "e" || rhs[i] == "ε") continue;
+                    st.push(rhs[i]);
+                }
+            }
+        }
+    }
+
+    // If we exit the loop without accepting:
+    cout << "Parse error: unexpected end of input" << endl;
+}
+
 
 int main()
 {
@@ -330,9 +442,10 @@ int main()
     readstates("automaton.txt");
     readtransition("transition.txt");
     readtokens("tokens.txt");
-    readinput("input.txt");
     readgrammar("grammar.txt");
-    generateTable("Table.txt");
+    generateTable();
+    readinput("input.txt"); // <-- tokenize file into global 'tokens'
+    parser();               // <-- parse using 'tokens'
     // for (auto s : State_Type)
     // {
     //     cout << s.first << " :" << s.second << endl;
@@ -363,7 +476,16 @@ int main()
     // {
     //     cout << i << endl;
     // }
-    cout << findProd("Expr`", "+");
+    // cout << findProd("Expr`", "+");
+    // for (auto i : parseTable)
+    // {
+    //     cout << i.first.first << ", " << i.first.second << " => " << i.second << endl;
+    // }
+    // printStack(input);
+    for (auto i : tokens)
+    {
+        cout << i << endl;
+    }
 
     return 0;
 }

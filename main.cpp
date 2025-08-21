@@ -325,7 +325,7 @@ void readinput(const string &filename)
 
                 if (recognized && State_Type[current] == "Final")
                 {
-                    tokens.push_back(Token[current]);
+                    tokens.push_back(Token[current] + ":" + buffer);
                 }
                 else
                 {
@@ -341,7 +341,7 @@ void readinput(const string &filename)
 
                 if (!current.empty() && State_Type[current] == "Final")
                 {
-                    tokens.push_back(Token[current]);
+                    tokens.push_back(Token[current] + ":" + input);
                 }
                 else
                 {
@@ -355,85 +355,316 @@ void readinput(const string &filename)
 }
 
 
-void parser()
-{
-    // Build input stream from the global 'tokens' vector:
-    vector<string> input = tokens;   // copy
-    input.push_back("$");            // end marker
+// void parser()
+// {
+//     // Build input stream from the global 'tokens' vector:
+//     vector<string> input = tokens;   // copy
+//     input.push_back("$");            // end marker
 
-    // Initialize parser stack with start symbol
-    stack<string> st;
-    string startSymbol = Grammar.begin()->first; // your code already relies on this
-    st.push("$");
-    st.push(startSymbol);
+//     // Initialize parser stack with start symbol
+//     stack<string> st;
+//     string startSymbol = Grammar.begin()->first; // your code already relies on this
+//     st.push("$");
+//     st.push(startSymbol);
 
-    // Cursor into input
+//     // Cursor into input
+//     size_t ip = 0;
+
+//     auto normalizeTokenName = [](const string& tok) -> string {
+//         // If later you store "num:123", strip to "num"
+//         size_t p = tok.find(':');
+//         if (p != string::npos) return tok.substr(0, p);
+//         return tok;
+//     };
+
+//     while (!st.empty())
+//     {
+//         string top = st.top();
+//         string lookahead = normalizeTokenName(input[ip]);
+
+//         // Accept?
+//         if (top == "$" && lookahead == "$") {
+//             cout << "Parsing successful" << endl;
+//             return;
+//         }
+
+//         // Terminal on stack
+//         if (nontermianl.count(top) == 0)
+//         {
+//             if (top == lookahead) {
+//                 st.pop();
+//                 ip++;                 // consume input
+//             } else {
+//                 cout << "Parse error: expected '" << top << "' but found '" << input[ip] << "'" << endl;
+//                 return;
+//             }
+//         }
+//         // Nonterminal on stack
+//         else
+//         {
+//             // Safe lookup: your parseTable keys must use the SAME terminal strings as grammar
+//             auto key = make_pair(top, lookahead);
+//             if (!parseTable.count(key)) {
+//                 // Try a couple of useful fallbacks when lookahead is number-like
+//                 if (lookahead == "Number") lookahead = "num";
+//                 key = make_pair(top, lookahead);
+//             }
+//             if (!parseTable.count(key)) {
+//                 cout << "Parse error at token '" << input[ip] << "' with nonterminal '" << top << "'" << endl;
+//                 return;
+//             }
+
+//             string prod = parseTable[key];
+//             st.pop();
+
+//             // epsilon?
+//             if (prod == "e" || prod == "ε" || prod.empty()) {
+//                 // do nothing (epsilon)
+//             } else {
+//                 // push RHS in reverse order
+//                 vector<string> rhs = split(prod, ' ');
+//                 for (int i = (int)rhs.size() - 1; i >= 0; --i) {
+//                     if (rhs[i].empty() || rhs[i] == "e" || rhs[i] == "ε") continue;
+//                     st.push(rhs[i]);
+//                 }
+//             }
+//         }
+//     }
+
+//     // If we exit the loop without accepting:
+//     cout << "Parse error: unexpected end of input" << endl;
+// }
+struct Symbol {
+    string name;
+    double value;
+    bool hasValue;
+};
+
+static inline string trim(const string& s) {
+    size_t b = s.find_first_not_of(" \t\r\n");
+    if (b == string::npos) return "";
+    size_t e = s.find_last_not_of(" \t\r\n");
+    return s.substr(b, e - b + 1);
+}
+
+static vector<string> split_ws(const string& s) {
+    vector<string> out;
+    string t;
+    stringstream ss(s);
+    while (ss >> t) out.push_back(t);
+    return out;
+}
+
+static inline bool isNonterminalSym(const string& s) {
+    return nontermianl.count(s) > 0;
+}
+
+void parser() {
+    // ----- تجهيز input tokens -----
+    vector<string> in = tokens;
+    in.push_back("$");
     size_t ip = 0;
 
-    auto normalizeTokenName = [](const string& tok) -> string {
-        // If later you store "num:123", strip to "num"
+    auto tokName = [](const string& tok)->string {
         size_t p = tok.find(':');
-        if (p != string::npos) return tok.substr(0, p);
-        return tok;
+        return (p == string::npos) ? tok : tok.substr(0, p);
+    };
+    auto tokValue = [](const string& tok)->double {
+        size_t p = tok.find(':');
+        return (p == string::npos) ? 0.0 : stod(tok.substr(p + 1));
     };
 
-    while (!st.empty())
-    {
-        string top = st.top();
-        string lookahead = normalizeTokenName(input[ip]);
+    // ----- الـ stacks -----
+    stack<string> pstack;   // parsing symbols + markers
+    vector<double> vstack;  // values of finished (num / nonterm)
 
-        // Accept?
-        if (top == "$" && lookahead == "$") {
-            cout << "Parsing successful" << endl;
-            return;
+    string startSymbol = Grammar.begin()->first;
+    pstack.push("$");
+    pstack.push(startSymbol);
+
+    auto reduce = [&](const string& marker) {
+        // marker شكلها:  "#LHS->RHS"
+        // نفصل LHS و RHS
+        size_t arrow = marker.find("->");
+        string LHS = marker.substr(1, arrow - 1);      // skip '#'
+        string RHS = marker.substr(arrow + 2);
+        LHS = trim(LHS);
+        RHS = trim(RHS);
+
+        // اجمع الرموز اللي ليها قيمة من RHS (nonterm + num)
+        vector<string> rhs = split_ws(RHS);
+        vector<int> take; // indices to take values for
+        for (int i = 0; i < (int)rhs.size(); ++i) {
+            string s = rhs[i];
+            if (s == "e" || s == "ε") continue;
+            if (s == "num" || isNonterminalSym(s)) take.push_back(i);
         }
 
-        // Terminal on stack
-        if (nontermianl.count(top) == 0)
-        {
-            if (top == lookahead) {
-                st.pop();
-                ip++;                 // consume input
+        // اسحب القيم من value stack بالترتيب الصحيح (RHS order)
+        vector<double> vals;
+        vals.resize(take.size());
+        for (int i = (int)take.size() - 1; i >= 0; --i) {
+            if (vstack.empty()) throw runtime_error("Value stack underflow");
+            vals[i] = vstack.back();
+            vstack.pop_back();
+        }
+
+        auto rhsIs = [&](const string& s) { return RHS == s; };
+
+        // ====== قواعد السيميتيك حسب الجرامر ======
+        double res = 0.0;
+
+        if (LHS == "Expr" && rhsIs("Term Expr`")) {
+            // vals = [Term, Expr`]
+            res = vals[0] + vals[1];
+        }
+        else if (LHS == "Expr`" && rhsIs("plus Term Expr`")) {
+            res = vals[0] + vals[1]; // Term + Expr`
+        }
+        else if (LHS == "Expr`" && rhsIs("minus Term Expr`")) {
+            res = -vals[0] + vals[1]; // (-Term) + Expr`
+        }
+        else if (LHS == "Expr`" && (rhsIs("e") || rhsIs("ε") || RHS.empty())) {
+            res = 0.0; // محايد الجمع
+        }
+        else if (LHS == "Term" && rhsIs("Power Term`")) {
+            res = vals[0] * vals[1]; // Power * Term`
+        }
+        else if (LHS == "Term`" && rhsIs("mult Power Term`")) {
+            res = vals[0] * vals[1]; // Power * Term`
+        }
+        else if (LHS == "Term`" && rhsIs("div Power Term`")) {
+            // (1 / Power) * Term`
+            res = (1.0 / vals[0]) * vals[1];
+        }
+        else if (LHS == "Term`" && (rhsIs("e") || rhsIs("ε") || RHS.empty())) {
+            res = 1.0; // محايد الضرب
+        }
+        else if (LHS == "Power" && rhsIs("Unary Power`")) {
+            // right-assoc: value = pow(Unary, Power`)
+            res = pow(vals[0], vals[1]);
+        }
+        else if (LHS == "Power`" && rhsIs("pow Unary Power`")) {
+            // value = pow(Unary, Power`)  (تركيب الأس يميني)
+            res = pow(vals[0], vals[1]);
+        }
+        else if (LHS == "Power`" && (rhsIs("e") || rhsIs("ε") || RHS.empty())) {
+            res = 1.0; // أساس الأس (a^1 = a)
+        }
+        else if (LHS == "Unary" && rhsIs("minus Unary")) {
+            res = -vals[0];
+        }
+        else if (LHS == "Unary" && rhsIs("Primary")) {
+            res = vals[0];
+        }
+        else if (LHS == "Primary" && rhsIs("Func")) {
+            res = vals[0];
+        }
+        else if (LHS == "Primary" && rhsIs("leftp Expr rightp")) {
+            res = vals[0]; // قيمة Expr
+        }
+        else if (LHS == "Primary" && rhsIs("num")) {
+            res = vals[0]; // قيمة الرقم
+        }
+        else if (LHS == "Func" && rhsIs("sin leftp Expr rightp")) {
+            res = sin(vals[0]);
+        }
+        else if (LHS == "Func" && rhsIs("cos leftp Expr rightp")) {
+            res = cos(vals[0]);
+        }
+        else if (LHS == "Func" && rhsIs("tan leftp Expr rightp")) {
+            res = tan(vals[0]);
+        }
+        else if (LHS == "Func" && rhsIs("log leftp Expr rightp")) {
+            res = log10(vals[0]);
+        }
+        else if (LHS == "Func" && rhsIs("ln leftp Expr rightp")) {
+            res = log(vals[0]);
+        }
+        else if (LHS == "Func" && rhsIs("sqrt leftp Expr rightp")) {
+            res = sqrt(vals[0]);
+        }
+        else {
+            // لو فيه production غير متغطي — رجّع 0 بشكل افتراضي
+            // ممكن ترمي استثناء أو تعمل assert هنا لو عايز تشدد.
+            res = (vals.empty() ? 0.0 : vals[0]);
+        }
+
+        // ادفع نتيجة الـ LHS على value stack
+        vstack.push_back(res);
+    };
+
+    while (!pstack.empty()) {
+        string X = pstack.top();
+
+        if (X == "$") {
+            if (tokName(in[ip]) == "$") {
+                // المفروض يبقى على vstack قيمة واحدة هي نتيجة الـ Expr
+                double ans = vstack.empty() ? 0.0 : vstack.back();
+                cout << "Parsing successful ✅\nResult = " << ans << endl;
+                return;
             } else {
-                cout << "Parse error: expected '" << top << "' but found '" << input[ip] << "'" << endl;
+                cerr << "Parse error: extra input at end: " << in[ip] << endl;
                 return;
             }
         }
-        // Nonterminal on stack
-        else
-        {
-            // Safe lookup: your parseTable keys must use the SAME terminal strings as grammar
-            auto key = make_pair(top, lookahead);
-            if (!parseTable.count(key)) {
-                // Try a couple of useful fallbacks when lookahead is number-like
-                if (lookahead == "Number") lookahead = "num";
-                key = make_pair(top, lookahead);
-            }
-            if (!parseTable.count(key)) {
-                cout << "Parse error at token '" << input[ip] << "' with nonterminal '" << top << "'" << endl;
+
+        // هل X ماركر تقليص؟
+        if (!X.empty() && X[0] == '#') {
+            pstack.pop();
+            reduce(X);
+            continue;
+        }
+
+        string a = tokName(in[ip]);
+
+        // Terminal?
+        if (!isNonterminalSym(X)) {
+            // match?
+            if (X == a) {
+                // لو num، خزّن قيمته
+                if (a == "num") vstack.push_back(tokValue(in[ip]));
+                pstack.pop();
+                ip++;
+            } else if (X == "e" || X == "ε") {
+                // ماينفعش نوصل هنا لأننا عمرنا ما بنرمي e على الstack
+                pstack.pop(); // احتياط
+            } else {
+                cerr << "Parse error: expected '" << X << "' but found '" << in[ip] << "'\n";
                 return;
             }
+        }
+        // Nonterminal: استخدم الـ LL table
+        else {
+            auto key = make_pair(X, a);
+            if (!parseTable.count(key)) {
+                cerr << "Parse error at token '" << in[ip] << "' with nonterminal '" << X << "'\n";
+                return;
+            }
+            string RHS = trim(parseTable[key]);   // ملاحظة: الـ table بيرجع RHS فقط
+            pstack.pop();
 
-            string prod = parseTable[key];
-            st.pop();
+            // ε-Production؟ حط ماركر بس
+            if (RHS == "e" || RHS == "ε" || RHS.empty()) {
+                pstack.push("#" + X + "->" + RHS);
+                continue;
+            }
 
-            // epsilon?
-            if (prod == "e" || prod == "ε" || prod.empty()) {
-                // do nothing (epsilon)
-            } else {
-                // push RHS in reverse order
-                vector<string> rhs = split(prod, ' ');
-                for (int i = (int)rhs.size() - 1; i >= 0; --i) {
-                    if (rhs[i].empty() || rhs[i] == "e" || rhs[i] == "ε") continue;
-                    st.push(rhs[i]);
-                }
+            // ادفع RHS بالعكس، وقبلهم ماركر التقليص
+            vector<string> syms = split_ws(RHS);
+            pstack.push("#" + X + "->" + RHS);
+            for (int i = (int)syms.size() - 1; i >= 0; --i) {
+                if (syms[i] == "e" || syms[i] == "ε" || syms[i].empty()) continue;
+                pstack.push(syms[i]);
             }
         }
     }
 
-    // If we exit the loop without accepting:
-    cout << "Parse error: unexpected end of input" << endl;
+    cerr << "Parse error: unexpected end of input\n";
 }
+
+
+
 
 
 int main()

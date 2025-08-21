@@ -6,7 +6,7 @@ q5,plus
 q6,mult
 q7,div
 q8,sqrt
-q9,power
+q9,pow
 q10,Dott
 q11,sin
 q12,cos

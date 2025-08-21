@@ -1,22 +1,22 @@
 Expr-> Term Expr`
-Expr`-> + Term Expr`
-Expr`-> - Term Expr` 
+Expr`-> plus Term Expr`
+Expr`-> minus Term Expr` 
 Expr`-> e
 Term-> Power Term`
-Term`-> * Power Term` 
-Term`-> / Power Term`
+Term`-> mult Power Term` 
+Term`-> div Power Term`
 Term`-> e
 Power-> Unary Power`
-Power`-> ^ Unary Power` 
+Power`-> pow Unary Power` 
 Power`-> e
-Unary-> - Unary
+Unary-> minus Unary
 Unary-> Primary
 Primary-> Func 
-Primary-> ( Expr ) 
+Primary-> leftp Expr rightp
 Primary-> num
-Func-> sin ( Expr ) 
-Func-> cos ( Expr ) 
-Func-> tan ( Expr ) 
-Func-> log ( Expr ) 
-Func-> ln ( Expr ) 
-Func-> sqrt ( Expr )
+Func-> sin leftp Expr rightp
+Func-> cos leftp Expr rightp 
+Func-> tan leftp Expr rightp
+Func-> log leftp Expr rightp 
+Func-> ln leftp Expr rightp
+Func-> sqrt leftp Expr rightp

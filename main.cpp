@@ -12,7 +12,7 @@ vector<string> tokens;
 string start_state;
 vector<string> input;
 
-void printStack(stack<string> s) // pass by value (copy)
+void printStack(stack<string> s) 
 {
     while (!s.empty())
     {
@@ -163,8 +163,6 @@ set<string> readfirst(string non)
 set<string> readfollow(string non)
 {
     set<string> follow;
-
-    // Rule 1: if it's the start symbol
     if (non == Grammar.begin()->first)
     {
         follow.insert("$");
@@ -176,7 +174,6 @@ set<string> readfollow(string non)
 
         for (auto &prod : rule.second)
         {
-            // Split RHS into symbols
             vector<string> symbols;
             stringstream ss(prod);
             string sym;
@@ -187,7 +184,6 @@ set<string> readfollow(string non)
             {
                 if (symbols[i] == non)
                 {
-                    // Case 1: Something follows
                     if (i + 1 < symbols.size())
                     {
                         string nextSym = symbols[i + 1];
@@ -213,7 +209,6 @@ set<string> readfollow(string non)
                             follow.insert(nextSym);
                         }
                     }
-                    // Case 2: At the end
                     else if (lhs != non)
                     {
                         set<string> followLHS = readfollow(lhs);
@@ -229,14 +224,13 @@ set<string> readfollow(string non)
 
 set<string> firstOfProduction(const string &prod)
 {
-    // Temporarily add it to a fake nonterminal
     string temp = "TMP";
     auto backup = Grammar[temp];
     Grammar[temp] = {prod};
 
     set<string> first = readfirst(temp);
 
-    Grammar[temp] = backup; // restore
+    Grammar[temp] = backup;
     return first;
 }
 
@@ -245,12 +239,8 @@ string findProd(const string &nonterm, const string &lookahead)
     for (auto &prod : Grammar[nonterm])
     {
         set<string> firstSet = firstOfProduction(prod);
-
-        // If lookahead is in FIRST(prod), this is the correct production
         if (firstSet.count(lookahead))
             return prod;
-
-        // Epsilon handling: if epsilon in FIRST, check FOLLOW
         if (firstSet.count("e"))
         {
             set<string> followSet = readfollow(nonterm);
@@ -303,18 +293,17 @@ void readinput(const string &filename)
 
         while (ss >> input)
         {
-            bool recognized = true; // Track if this token is valid
+            bool recognized = true;
 
             if (isdigit(input[0]))
             {
                 string buffer = "";
-                current = start_state; // Always reset before reading a new token
+                current = start_state;
                 for (char c : input)
                 {
                     string s(1, c);
                     current = getnextstate(current, s);
-
-                    if (current.empty()) // No valid transition
+                    if (current.empty())
                     {
                         recognized = false;
                         break;
@@ -430,8 +419,6 @@ void readinput(const string &filename)
 //             }
 //         }
 //     }
-
-//     // If we exit the loop without accepting:
 //     cout << "Parse error: unexpected end of input" << endl;
 // }
 struct Symbol {
@@ -472,61 +459,69 @@ bool isEpsilon(const string& s) {
     return s == "e" || s == "ε" || s.empty();
 }
 
-// ========= Reduction Function =========
 double applyRule(const string& LHS, const string& RHS, const vector<double>& vals) {
-    auto rhsIs = [&](const string& s) { return trim(RHS) == s ;};
-
-    if (LHS == "Expr"  && rhsIs("Term Expr`"))           return vals[0] + vals[1];
-    if (LHS == "Expr`" && rhsIs("plus Term Expr`"))      return vals[0] + vals[1];
-    if (LHS == "Expr`" && rhsIs("minus Term Expr`"))     return -vals[0] + vals[1];
-    if (LHS == "Expr`" && isEpsilon(RHS))                return 0.0;
-
-    if (LHS == "Term"  && rhsIs("Power Term`"))          return vals[0] * vals[1];
-    if (LHS == "Term`" && rhsIs("mult Power Term`"))     return vals[0] * vals[1];
-    if (LHS == "Term`" && rhsIs("div Power Term`"))      return (1.0 / vals[0]) * vals[1];
-    if (LHS == "Term`" && isEpsilon(RHS))                return 1.0;
-
-    if (LHS == "Power" && rhsIs("Unary Power`"))         return pow(vals[0], vals[1]);
-    if (LHS == "Power`" && rhsIs("pow Unary Power`"))    return pow(vals[0], vals[1]);
-    if (LHS == "Power`" && isEpsilon(RHS))               return 1.0;
-
-    if (LHS == "Unary" && rhsIs("minus Unary"))          return -vals[0];
-    if (LHS == "Unary" && rhsIs("Primary"))              return vals[0];
-
-    if (LHS == "Primary" && rhsIs("Func"))               return vals[0];
-    if (LHS == "Primary" && rhsIs("leftp Expr rightp"))  return vals[0];
-    if (LHS == "Primary" && rhsIs("num"))                return vals[0];
-
-    if (LHS == "Func" && rhsIs("sin leftp Expr rightp")) return sin(vals[0]);
-    if (LHS == "Func" && rhsIs("cos leftp Expr rightp")) return cos(vals[0]);
-    if (LHS == "Func" && rhsIs("tan leftp Expr rightp")) return tan(vals[0]);
-    if (LHS == "Func" && rhsIs("log leftp Expr rightp")) return log10(vals[0]);
-    if (LHS == "Func" && rhsIs("ln leftp Expr rightp"))  return log(vals[0]);
-    if (LHS == "Func" && rhsIs("sqrt leftp Expr rightp"))return sqrt(vals[0]);
-
-    // Default
+    auto rhsIs = [&](const string& s)
+    { 
+        return trim(RHS) == s ;
+    };
+    if (LHS == "Expr"  && rhsIs("Term Expr`"))           
+        return vals[0] + vals[1];
+    if (LHS == "Expr`" && rhsIs("plus Term Expr`"))      
+        return vals[0] + vals[1];
+    if (LHS == "Expr`" && rhsIs("minus Term Expr`"))     
+        return -vals[0] + vals[1];
+    if (LHS == "Expr`" && isEpsilon(RHS))                
+        return 0.0;
+    if (LHS == "Term"  && rhsIs("Power Term`"))          
+        return vals[0] * vals[1];
+    if (LHS == "Term`" && rhsIs("mult Power Term`"))     
+        return vals[0] * vals[1];
+    if (LHS == "Term`" && rhsIs("div Power Term`"))      
+        return (1.0 / vals[0]) * vals[1];
+    if (LHS == "Term`" && isEpsilon(RHS))               
+        return 1.0;
+    if (LHS == "Power" && rhsIs("Unary Power`"))        
+        return pow(vals[0], vals[1]);
+    if (LHS == "Power`" && rhsIs("pow Unary Power`"))    
+        return pow(vals[0], vals[1]);
+    if (LHS == "Power`" && isEpsilon(RHS))               
+        return 1.0;
+    if (LHS == "Unary" && rhsIs("minus Unary"))          
+        return -vals[0];
+    if (LHS == "Unary" && rhsIs("Primary"))              
+        return vals[0];
+    if (LHS == "Primary" && rhsIs("Func"))               
+        return vals[0];
+    if (LHS == "Primary" && rhsIs("leftp Expr rightp"))  
+        return vals[0];
+    if (LHS == "Primary" && rhsIs("num"))                
+        return vals[0];
+    if (LHS == "Func" && rhsIs("sin leftp Expr rightp")) 
+        return sin(vals[0]);
+    if (LHS == "Func" && rhsIs("cos leftp Expr rightp")) 
+        return cos(vals[0]);
+    if (LHS == "Func" && rhsIs("tan leftp Expr rightp")) 
+        return tan(vals[0]);
+    if (LHS == "Func" && rhsIs("log leftp Expr rightp"))
+        return log10(vals[0]);
+    if (LHS == "Func" && rhsIs("ln leftp Expr rightp"))  
+        return log(vals[0]);
+    if (LHS == "Func" && rhsIs("sqrt leftp Expr rightp"))
+        return sqrt(vals[0]);
     return vals.empty() ? 0.0 : vals[0];
 }
-
-// ========= Parser =========
 void parser() {
-    // Input + init
     vector<string> in = tokens;
     in.push_back("$");
     size_t ip = 0;
-
     stack<string> pstack;
     vector<double> vstack;
-
     string start = Grammar.begin()->first;
     pstack.push("$");
     pstack.push(start);
-
     while (!pstack.empty()) {
         string X = pstack.top();
         string a = tokName(in[ip]);
-
-        // Case 1: End of input
         if (X == "$") {
             if (a == "$") {
                 cout <<"parsing successful and result is: "<<"\nResult = " << (vstack.empty() ? 0.0 : vstack.back()) << endl;
@@ -535,18 +530,12 @@ void parser() {
             cerr << "Parse error: extra input '" << in[ip] << "'\n";
             return;
         }
-
-        // Case 2: Reduction marker
         if (!X.empty() && X[0] == '#') {
             pstack.pop();
-
-            // Parse marker: "#LHS->RHS"
             size_t arrow = X.find("->");
             string LHS = trim(X.substr(1, arrow - 1));
             string RHS = trim(X.substr(arrow + 2));
             vector<string> rhs = split_ws(RHS);
-
-            // Collect values
             vector<double> vals;
             for (int i = (int)rhs.size() - 1; i >= 0; --i) {
                 if (rhs[i] == "num" || isNonterminalSym(rhs[i])) {
@@ -554,12 +543,9 @@ void parser() {
                     vstack.pop_back();
                 }
             }
-
             vstack.push_back(applyRule(LHS, RHS, vals));
             continue;
         }
-
-        // Case 3: Terminal
         if (!isNonterminalSym(X)) {
             if (X == a) {
                 if (a == "num") vstack.push_back(tokValue(in[ip]));
@@ -571,8 +557,6 @@ void parser() {
             }
             continue;
         }
-
-        // Case 4: Nonterminal
         auto key = make_pair(X, a);
         if (!parseTable.count(key)) {
             cerr << "Parse error at token '" << in[ip] << "' with nonterminal '" << X << "'\n";
@@ -581,8 +565,6 @@ void parser() {
 
         string RHS = trim(parseTable[key]);
         pstack.pop();
-
-        // Push rule marker + RHS
         pstack.push("#" + X + "->" + RHS);
         if (!isEpsilon(RHS)) {
             vector<string> syms = split_ws(RHS);
@@ -602,8 +584,8 @@ int main()
     readtokens("tokens.txt");
     readgrammar("grammar.txt");
     generateTable();
-    readinput("input.txt"); // <-- tokenize file into global 'tokens'
-    parser();               // <-- parse using 'tokens'
+    readinput("input.txt");
+    parser();               
     // for (auto s : State_Type)
     // {
     //     cout << s.first << " :" << s.second << endl;
@@ -647,4 +629,5 @@ int main()
 
     return 0;
 }
+
 
